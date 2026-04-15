@@ -1,0 +1,67 @@
+services:
+  - type: web
+    name: powerroutines-api
+    env: native
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    healthCheckPath: /api/ping
+    envVars:
+      # App
+      - key: APP_NAME
+        value: PowerRoutines
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        value: https://powerroutines-api.onrender.com   # ← actualizar con la URL real de Render
+
+      # PHP / Nixpacks — extensiones requeridas
+      - key: NIXPACKS_PHP_VERSION
+        value: "8.3"
+      - key: NIXPACKS_PHP_EXTENSIONS
+        value: pdo_pgsql pgsql mbstring xml tokenizer gd zip bcmath fileinfo intl
+
+      # Base de datos — completar con los datos de Supabase
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        sync: false   # pegar desde Supabase → Settings → Database → Host
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: postgres
+      - key: DB_USERNAME
+        value: postgres
+      - key: DB_PASSWORD
+        sync: false   # pegar desde Supabase → Settings → Database → Password
+
+      # Storage
+      - key: FILESYSTEM_DISK
+        value: public
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: CACHE_STORE
+        value: file
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: SESSION_DOMAIN
+        value: ".onrender.com"
+
+      # CORS — pegar la URL de Vercel después del deploy del front
+      - key: FRONTEND_URL
+        value: https://powerroutines.vercel.app   # ← actualizar
+
+      # Mercado Pago
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_PUBLIC_KEY
+        sync: false
+
+      # Logs
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: error

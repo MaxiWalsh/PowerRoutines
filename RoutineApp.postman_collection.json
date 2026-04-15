@@ -1,0 +1,549 @@
+{
+  "info": {
+    "name": "RoutineApp API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000/api" },
+    { "key": "token",   "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/users/register",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Juan Trainer\",\n  \"email\": \"juan@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"role\": \"trainer\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('token', res.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": "{{baseUrl}}/users/login",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"email\": \"juan@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('token', res.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/me",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Actualizar perfil",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/users/me",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Juan López\",\n  \"birth_date\": \"1990-06-15\",\n  \"gender\": \"male\",\n  \"weight_kg\": 78.5,\n  \"height_cm\": 180\n}"
+            }
+          }
+        },
+        {
+          "name": "Subir avatar",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/me/avatar",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "avatar", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/logout",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ejercicios",
+      "item": [
+        {
+          "name": "Listar ejercicios",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/exercises",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Crear ejercicio",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/exercises",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Press de banca\",\n  \"description\": \"Ejercicio básico de pecho\",\n  \"muscle_group\": \"Pecho\",\n  \"equipment\": \"Barra\",\n  \"is_global\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Editar ejercicio",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/exercises/1",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Press de banca plano\",\n  \"equipment\": \"Barra olímpica\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar ejercicio",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/exercises/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Rutinas",
+      "item": [
+        {
+          "name": "Listar rutinas",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/routines",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Crear rutina",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/routines",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Rutina Fuerza A\",\n  \"description\": \"Push Pull Legs — semana A\",\n  \"scope\": \"personal\",\n  \"is_template\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Ver rutina",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/routines/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Editar rutina",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/routines/1",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Rutina Fuerza A v2\",\n  \"is_active\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar rutina",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/routines/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bloques",
+      "item": [
+        {
+          "name": "Crear bloque",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/routines/1/blocks",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Día A — Pecho y Tríceps\",\n  \"order\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Editar bloque",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/routines/1/blocks/1",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Día A — Pecho, Tríceps y Hombro\",\n  \"notes\": \"Aumentar peso en press cada semana\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar bloque",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/routines/1/blocks/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Agregar ejercicio al bloque",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/routines/1/blocks/1/exercises",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"exercise_id\": 1,\n  \"sets\": 4,\n  \"reps\": 8,\n  \"rest_sec\": 90,\n  \"order\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Editar ejercicio en bloque",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/routines/1/blocks/1/exercises/1",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"sets\": 5,\n  \"reps\": 5,\n  \"rest_sec\": 120\n}"
+            }
+          }
+        },
+        {
+          "name": "Quitar ejercicio del bloque",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/routines/1/blocks/1/exercises/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Asignación de rutinas",
+      "item": [
+        {
+          "name": "Asignar a student",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/routines/1/assign/student/2",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"start_date\": \"2026-04-14\",\n  \"notes\": \"Empezar con 60% del RM\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Asignar a gym",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/routines/1/assign/gym/1",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"start_date\": \"2026-04-14\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Asignar a perfil",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/routines/1/assign/profile/1",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"start_date\": \"2026-04-14\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar asignación",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/routines/1/assignments/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Gimnasios",
+      "item": [
+        {
+          "name": "Crear gimnasio",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/gyms",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"CrossFit Norte\",\n  \"description\": \"Gimnasio funcional\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ver gimnasio",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/gyms/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Subir logo del gym",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/gyms/1/logo",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "logo", "type": "file", "src": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Editar gimnasio",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/gyms/1",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"description\": \"Gimnasio funcional — zona norte\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Unirse al gym (student)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/gyms/join",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"invite_code\": \"ABC123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Ver students del gym",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/gyms/1/students",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Remover student del gym",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/gyms/1/students/2",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Perfiles",
+      "item": [
+        {
+          "name": "Listar perfiles",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/profiles",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Crear perfil",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/profiles",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Futbolista\",\n  \"description\": \"Perfil orientado a rendimiento en fútbol\",\n  \"gym_id\": 1,\n  \"is_global\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Editar perfil",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/profiles/1",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"description\": \"Fuerza y potencia para fútbol profesional\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Eliminar perfil",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/profiles/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Asignar perfil a student",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/profiles/1/users/2",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Quitar perfil de student",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/profiles/1/users/2",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logs de entrenamiento",
+      "item": [
+        {
+          "name": "Registrar serie",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/logs",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"exercise_id\": 1,\n  \"routine_id\": 1,\n  \"block_id\": 1,\n  \"weight_kg\": 80,\n  \"reps\": 8,\n  \"sets\": 4,\n  \"notes\": \"Me sentí fuerte hoy\",\n  \"logged_at\": \"2026-04-12 18:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Mi historial",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/me/logs",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Historial por ejercicio",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/me/logs/exercise/1",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Stats de ejercicio",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/me/logs/exercise/1/stats",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Progreso de students (trainer)",
+      "item": [
+        {
+          "name": "Historial de un student",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students/2/logs",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "Stats de ejercicio de un student",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/students/2/logs/exercise/1/stats",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        }
+      ]
+    }
+  ]
+}
