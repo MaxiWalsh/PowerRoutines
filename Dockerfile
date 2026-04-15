@@ -11,6 +11,20 @@ RUN apt-get update && apt-get install -y \
     && a2enmod rewrite \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Defaults de entorno (no-sensibles — los sensibles van en el dashboard de Render)
+ENV APP_ENV=production \
+    APP_DEBUG=false \
+    DB_CONNECTION=pgsql \
+    DB_PORT=5432 \
+    DB_DATABASE=postgres \
+    DB_USERNAME=postgres \
+    CACHE_STORE=file \
+    SESSION_DRIVER=cookie \
+    QUEUE_CONNECTION=sync \
+    FILESYSTEM_DISK=public \
+    LOG_CHANNEL=stderr \
+    LOG_LEVEL=error
+
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
