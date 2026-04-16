@@ -45,12 +45,17 @@ class AuthController extends Controller
     public function updateMe(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'       => 'sometimes|string|max:100',
-            'avatar'     => 'nullable|url',
-            'birth_date' => 'nullable|date',
-            'gender'     => 'nullable|in:male,female,other',
-            'weight_kg'  => 'nullable|numeric|min:0|max:500',
-            'height_cm'  => 'nullable|numeric|min:0|max:300',
+            'name'          => 'sometimes|string|max:100',
+            'avatar'        => 'nullable|url',
+            'birth_date'    => 'nullable|date',
+            'gender'        => 'nullable|in:male,female,other',
+            'weight_kg'     => 'nullable|numeric|min:0|max:500',
+            'height_cm'     => 'nullable|numeric|min:0|max:300',
+            'discipline'    => 'nullable|string|max:50',
+            'goal'          => 'nullable|string|max:50',
+            'fitness_level' => 'nullable|in:beginner,intermediate,advanced',
+            'conditions'    => 'nullable|array',
+            'conditions.*'  => 'string|max:50',
         ]);
 
         $request->user()->update($data);

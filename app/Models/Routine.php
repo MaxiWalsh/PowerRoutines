@@ -16,13 +16,16 @@ class Routine extends Model
         'owner_id', 'name', 'description', 'scope', 'is_template', 'is_active',
         'price', 'is_published', 'marketplace_description',
         'difficulty', 'duration_weeks', 'days_per_week', 'cover_image',
+        'discipline', 'target_goals', 'target_level', 'contraindications',
     ];
 
     protected $casts = [
-        'is_template'  => 'boolean',
-        'is_active'    => 'boolean',
-        'is_published' => 'boolean',
-        'price'        => 'float',
+        'is_template'      => 'boolean',
+        'is_active'        => 'boolean',
+        'is_published'     => 'boolean',
+        'price'            => 'float',
+        'target_goals'     => 'array',
+        'contraindications'=> 'array',
     ];
 
     // ── Scopes ───────────────────────────────────────────────────────────────

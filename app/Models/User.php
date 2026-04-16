@@ -20,6 +20,7 @@ class User extends Authenticatable
         'name', 'email', 'password',
         'avatar', 'birth_date', 'gender',
         'weight_kg', 'height_cm', 'plan',
+        'discipline', 'goal', 'fitness_level', 'conditions',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -29,6 +30,7 @@ class User extends Authenticatable
         'birth_date'        => 'date',
         'weight_kg'         => 'float',
         'height_cm'         => 'float',
+        'conditions'        => 'array',
     ];
 
     // ── Helpers de plan ──────────────────────────────────────────────────────

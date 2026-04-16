@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 
 class MarketplaceController extends Controller
 {
-    /** GET /marketplace — rutinas publicadas (paginado) */
+    /** GET /marketplace — rutinas publicadas (paginado, con filtros) */
     public function index(Request $request): JsonResponse
     {
         $query = Routine::where('is_published', true)
@@ -28,13 +28,15 @@ class MarketplaceController extends Controller
         }
 
         if ($request->filled('free')) {
-            // Envolver en closure para no romper el AND is_published = true
             $query->where(fn($q) => $q->where('price', 0)->orWhereNull('price'));
+        }
+
+        if ($request->filled('discipline')) {
+            $query->where('discipline', $request->discipline);
         }
 
         $routines = $query->orderByDesc('created_at')->paginate(20);
 
-        // Marcar si el usuario autenticado ya compró cada rutina
         $userId       = $request->user()->id;
         $purchasedIds = RoutinePurchase::where('user_id', $userId)->pluck('routine_id')->toArray();
 
@@ -45,6 +47,64 @@ class MarketplaceController extends Controller
         });
 
         return response()->json(RoutineResource::collection($routines)->response()->getData(true));
+    }
+
+    /**
+     * GET /marketplace/recommended
+     * Rutinas que coinciden con el perfil del usuario autenticado:
+     * misma disciplina, nivel compatible, sin contraindicaciones conflictivas.
+     */
+    public function recommended(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $query = Routine::where('is_published', true)
+            ->with(['owner', 'days'])
+            ->withCount('purchases');
+
+        // Solo si el usuario tiene disciplina configurada
+        if ($user->discipline) {
+            $query->where('discipline', $user->discipline);
+        }
+
+        // Filtrar por nivel compatible (principiante ve beginner, intermedio ve hasta intermediate, etc.)
+        if ($user->fitness_level) {
+            $levelOrder = ['beginner' => 1, 'intermediate' => 2, 'advanced' => 3];
+            $userLevel  = $levelOrder[$user->fitness_level] ?? 1;
+
+            $compatibleLevels = array_keys(array_filter(
+                $levelOrder,
+                fn($v) => $v <= $userLevel
+            ));
+
+            $query->where(function ($q) use ($compatibleLevels) {
+                $q->whereIn('target_level', $compatibleLevels)
+                  ->orWhereNull('target_level');
+            });
+        }
+
+        $routines = $query->orderByDesc('purchases_count')->limit(10)->get();
+
+        $purchasedIds = RoutinePurchase::where('user_id', $user->id)->pluck('routine_id')->toArray();
+
+        // Filtrar contraindicaciones en PHP (json array matching)
+        $userConditions = $user->conditions ?? [];
+
+        $routines = $routines->filter(function ($routine) use ($userConditions) {
+            if (empty($userConditions) || empty($routine->contraindications)) {
+                return true;
+            }
+            // Excluir si hay intersección entre condiciones del user y contraindicaciones de la rutina
+            return empty(array_intersect($userConditions, $routine->contraindications));
+        })->values();
+
+        $routines->transform(function ($routine) use ($purchasedIds, $user) {
+            $routine->is_purchased   = in_array($routine->id, $purchasedIds);
+            $routine->is_own_routine = $routine->owner_id === $user->id;
+            return $routine;
+        });
+
+        return response()->json(RoutineResource::collection($routines));
     }
 
     /** POST /marketplace/{routine}/purchase — comprar una rutina */
@@ -61,14 +121,12 @@ class MarketplaceController extends Controller
 
         abort_if($alreadyPurchased, 422, 'Ya compraste esta rutina.');
 
-        // Mock payment — en producción integrar Stripe/MercadoPago aquí
         RoutinePurchase::create([
             'user_id'    => $user->id,
             'routine_id' => $routine->id,
             'price_paid' => $routine->price ?? 0,
         ]);
 
-        // Asignar la rutina al estudiante automáticamente
         RoutineAssignment::create([
             'routine_id'      => $routine->id,
             'assigned_by'     => $routine->owner_id,
@@ -92,6 +150,12 @@ class MarketplaceController extends Controller
             'duration_weeks'          => 'nullable|integer|min:1|max:52',
             'days_per_week'           => 'nullable|integer|min:1|max:7',
             'cover_image'             => 'nullable|url',
+            'discipline'              => 'nullable|string|max:50',
+            'target_goals'            => 'nullable|array',
+            'target_goals.*'          => 'string|max:50',
+            'target_level'            => 'nullable|in:beginner,intermediate,advanced',
+            'contraindications'       => 'nullable|array',
+            'contraindications.*'     => 'string|max:50',
         ]);
 
         $routine->update(array_merge($data, ['is_published' => true]));

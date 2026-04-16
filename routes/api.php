@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Marketplace
     Route::get('marketplace',                               [MarketplaceController::class, 'index']);
+    Route::get('marketplace/recommended',                   [MarketplaceController::class, 'recommended']);
     Route::post('marketplace/{routine}/checkout',           [PaymentController::class, 'createPreference']);
     Route::get('marketplace/{routine}/purchase-status',     [PaymentController::class, 'purchaseStatus']);
     Route::post('routines/{routine}/publish',               [MarketplaceController::class, 'publish']);
