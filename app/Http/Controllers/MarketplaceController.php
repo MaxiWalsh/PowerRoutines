@@ -62,9 +62,9 @@ class MarketplaceController extends Controller
             ->with(['owner', 'days'])
             ->withCount('purchases');
 
-        // Solo si el usuario tiene disciplina configurada
-        if ($user->discipline) {
-            $query->where('discipline', $user->discipline);
+        // Filtrar por disciplinas del usuario (ahora es un array)
+        if (!empty($user->disciplines)) {
+            $query->whereIn('discipline', $user->disciplines);
         }
 
         // Filtrar por nivel compatible (principiante ve beginner, intermedio ve hasta intermediate, etc.)
