@@ -57,5 +57,6 @@ CMD bash -c "\
     php artisan route:cache && \
     php artisan view:cache && \
     php artisan migrate --force && \
+    php artisan db:seed --class=RoleSeeder --force && \
     php artisan storage:link && \
     apache2-foreground"
