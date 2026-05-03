@@ -7,6 +7,7 @@ use App\Models\Routine;
 use App\Models\RoutineAssignment;
 use App\Models\RoutinePurchase;
 use App\Models\User;
+use App\Services\ImageUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -139,7 +140,7 @@ class MarketplaceController extends Controller
     }
 
     /** POST /routines/{routine}/publish — trainer publica su rutina */
-    public function publish(Request $request, Routine $routine): JsonResponse
+    public function publish(Request $request, Routine $routine, ImageUploadService $imageService): JsonResponse
     {
         abort_if($routine->owner_id !== $request->user()->id, 403, 'Solo el dueño puede publicar esta rutina.');
 
@@ -150,6 +151,7 @@ class MarketplaceController extends Controller
             'duration_weeks'          => 'nullable|integer|min:1|max:52',
             'days_per_week'           => 'nullable|integer|min:1|max:7',
             'cover_image'             => 'nullable|url',
+            'cover_image_file'        => 'nullable|file|image|max:4096',
             'discipline'              => 'nullable|string|max:50',
             'target_goals'            => 'nullable|array',
             'target_goals.*'          => 'string|max:50',
@@ -157,6 +159,14 @@ class MarketplaceController extends Controller
             'contraindications'       => 'nullable|array',
             'contraindications.*'     => 'string|max:50',
         ]);
+
+        if ($request->hasFile('cover_image_file')) {
+            $data['cover_image'] = $imageService->store($request->file('cover_image_file'), 'marketplace-covers');
+        } elseif (empty($data['cover_image'])) {
+            $data['cover_image'] = null;
+        }
+
+        unset($data['cover_image_file']);
 
         $routine->update(array_merge($data, ['is_published' => true]));
 

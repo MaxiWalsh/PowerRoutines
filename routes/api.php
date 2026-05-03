@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AIRoutineController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BlockController;
 use App\Http\Controllers\ExerciseController;
@@ -43,6 +44,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('gyms/{gym}/students',                [GymController::class, 'students']);
     Route::delete('gyms/{gym}/leave',                [GymController::class, 'leave']);
     Route::delete('gyms/{gym}/students/{studentId}', [GymController::class, 'removeStudent']);
+
+    // Rutinas — AI desde foto (debe ir ANTES del apiResource para que no lo capture {routine})
+    Route::post('routines/from-photo', [AIRoutineController::class, 'store']);
 
     // Rutinas (CRUD)
     Route::apiResource('routines', RoutineController::class);
