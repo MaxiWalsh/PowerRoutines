@@ -161,7 +161,13 @@ class MarketplaceController extends Controller
         ]);
 
         if ($request->hasFile('cover_image_file')) {
-            $data['cover_image'] = $imageService->store($request->file('cover_image_file'), 'marketplace-covers');
+            try {
+                $data['cover_image'] = $imageService->store($request->file('cover_image_file'), 'marketplace-covers');
+            } catch (\Exception $e) {
+                return response()->json([
+                    'message' => 'No se pudo subir la imagen de portada. Verificá tu conexión e intentá de nuevo.',
+                ], 422);
+            }
         } elseif (empty($data['cover_image'])) {
             $data['cover_image'] = null;
         }
