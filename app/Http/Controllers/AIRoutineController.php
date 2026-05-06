@@ -21,49 +21,54 @@ class AIRoutineController extends Controller
         $imageData   = base64_encode(file_get_contents($request->file('photo')->getRealPath()));
         $mediaType   = $request->file('photo')->getMimeType();
 
-        $response = Http::withHeaders([
-            'x-api-key'         => env('ANTHROPIC_API_KEY'),
-            'anthropic-version' => '2023-06-01',
-            'Content-Type'      => 'application/json',
-        ])->post('https://api.anthropic.com/v1/messages', [
-            'model'      => 'claude-haiku-4-5-20251001',
-            'max_tokens' => 2048,
-            'messages'   => [
-                [
-                    'role'    => 'user',
-                    'content' => [
-                        [
-                            'type'  => 'image',
-                            'source' => [
-                                'type'       => 'base64',
-                                'media_type' => $mediaType,
-                                'data'       => $imageData,
+        $response = Http::post(
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . config('services.gemini.api_key'),
+            [
+                'contents' => [
+                    [
+                        'parts' => [
+                            [
+                                'inline_data' => [
+                                    'mime_type' => $mediaType,
+                                    'data'      => $imageData,
+                                ],
                             ],
-                        ],
-                        [
-                            'type' => 'text',
-                            'text' => 'Analizá esta imagen de entrenamiento y generá una rutina de ejercicios estructurada. '
-                                . 'Respondé ÚNICAMENTE con un JSON válido, sin markdown, sin explicaciones, sin bloques de código. '
-                                . 'El JSON debe tener exactamente esta estructura: '
-                                . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":"10","rest_seconds":60,"notes":""}]}]}]}. '
-                                . 'Identificá todos los ejercicios visibles en la imagen, sus series, repeticiones y descansos aproximados. '
-                                . 'Si no podés determinar un valor numérico, usá valores típicos para ese tipo de ejercicio.',
+                            [
+                                'text' => 'Analizá esta imagen de entrenamiento y generá una rutina de ejercicios estructurada. '
+                                    . 'Respondé ÚNICAMENTE con un JSON válido, sin markdown, sin explicaciones, sin bloques de código. '
+                                    . 'El JSON debe tener exactamente esta estructura: '
+                                    . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":"10","rest_seconds":60,"notes":""}]}]}]}. '
+                                    . 'Identificá todos los ejercicios visibles en la imagen, sus series, repeticiones y descansos aproximados. '
+                                    . 'Si no podés determinar un valor numérico, usá valores típicos para ese tipo de ejercicio.',
+                            ],
                         ],
                     ],
                 ],
-            ],
-        ]);
+                'generationConfig' => [
+                    'temperature'     => 0.1,
+                    'maxOutputTokens' => 2048,
+                ],
+            ]
+        );
+
+        if (! $response->successful()) {
+            abort(503, 'Hubo un problema al analizar la imagen. Intentá de nuevo en unos momentos.');
+        }
 
         $body    = $response->json();
-        $jsonStr = $body['content'][0]['text'] ?? '';
+        $jsonStr = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
 
         // Strip any accidental markdown fences
         $jsonStr = preg_replace('/^```(?:json)?\s*/i', '', trim($jsonStr));
-        $jsonStr = preg_replace('/\s*```$/', '', $jsonStr);
+        $jsonStr = preg_replace('/\s*```$/',           '', $jsonStr);
 
         $parsed = json_decode(trim($jsonStr), true);
 
-        abort_if($parsed === null, 422, 'La IA no devolvió un JSON válido.');
+        abort_if(
+            $parsed === null,
+            422,
+            'No pudimos generar la rutina a partir de esta imagen. Intentá con una foto más clara del entrenamiento.'
+        );
 
         $user = $request->user();
 
