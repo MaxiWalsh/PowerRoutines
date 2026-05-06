@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AIRoutineController extends Controller
 {
@@ -52,6 +53,10 @@ class AIRoutineController extends Controller
         );
 
         if (! $response->successful()) {
+            Log::error('Gemini API error', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
             abort(503, 'Hubo un problema al analizar la imagen. Intentá de nuevo en unos momentos.');
         }
 
