@@ -19,10 +19,12 @@ class AIRoutineController extends Controller
             'photo' => 'required|file|image|max:8192',
         ]);
 
-        $imageData   = base64_encode(file_get_contents($request->file('photo')->getRealPath()));
-        $mediaType   = $request->file('photo')->getMimeType();
+        $imageData = base64_encode($this->resizeImage($request->file('photo')->getRealPath(), 1600));
+        $mediaType = 'image/jpeg';
 
-        $response = Http::post(
+        $http = app()->isLocal() ? Http::withoutVerifying() : Http::new();
+
+        $response = $http->post(
             'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . config('services.gemini.api_key'),
             [
                 'contents' => [
@@ -35,19 +37,24 @@ class AIRoutineController extends Controller
                                 ],
                             ],
                             [
-                                'text' => 'Analizá esta imagen de entrenamiento y generá una rutina de ejercicios estructurada. '
-                                    . 'Respondé ÚNICAMENTE con un JSON válido, sin markdown, sin explicaciones, sin bloques de código. '
-                                    . 'El JSON debe tener exactamente esta estructura: '
+                                'text' => 'Esta imagen contiene una rutina de entrenamiento escrita (puede ser papel, pizarrón, captura de pantalla o similar). '
+                                    . 'Leé todo el texto de la imagen y transcribí la rutina al siguiente formato JSON. '
+                                    . 'Estructura exacta requerida: '
                                     . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":"10","rest_seconds":60,"notes":""}]}]}]}. '
-                                    . 'Identificá todos los ejercicios visibles en la imagen, sus series, repeticiones y descansos aproximados. '
-                                    . 'Si no podés determinar un valor numérico, usá valores típicos para ese tipo de ejercicio.',
+                                    . 'Reglas: '
+                                    . '1. Transcribí los ejercicios exactamente como están escritos en la imagen. '
+                                    . '2. Si hay días o grupos (ej: "Día A", "Tren superior"), usalos como days/blocks. Si no hay división por días, usá un solo día. '
+                                    . '3. Para sets/reps/rest que no estén escritos, usá valores estándar (sets:3, reps:"10", rest_seconds:60). '
+                                    . '4. El campo reps puede ser string para rangos o texto (ej: "8-12", "al fallo"). '
+                                    . '5. Si la imagen no contiene una rutina de entrenamiento, devolvé {"error":"no_routine"}.',
                             ],
                         ],
                     ],
                 ],
                 'generationConfig' => [
-                    'temperature'     => 0.1,
-                    'maxOutputTokens' => 2048,
+                    'temperature'      => 0.1,
+                    'maxOutputTokens'  => 2048,
+                    'responseMimeType' => 'application/json',
                 ],
             ]
         );
@@ -69,11 +76,14 @@ class AIRoutineController extends Controller
 
         $parsed = json_decode(trim($jsonStr), true);
 
-        abort_if(
-            $parsed === null,
-            422,
-            'No pudimos generar la rutina a partir de esta imagen. Intentá con una foto más clara del entrenamiento.'
-        );
+        if ($parsed === null) {
+            Log::warning('Gemini JSON parse failed', ['raw' => $jsonStr]);
+            abort(422, 'No pudimos generar la rutina a partir de esta imagen. Intentá con una foto más clara del entrenamiento.');
+        }
+
+        if (isset($parsed['error'])) {
+            abort(422, 'La imagen no parece contener una rutina de entrenamiento. Usá una foto de una rutina escrita.');
+        }
 
         $user = $request->user();
 
@@ -134,5 +144,39 @@ class AIRoutineController extends Controller
         });
 
         return response()->json(['routine_id' => $routine->id], 201);
+    }
+
+    private function resizeImage(string $path, int $maxDimension): string
+    {
+        [$width, $height, $type] = getimagesize($path);
+
+        if ($width <= $maxDimension && $height <= $maxDimension) {
+            return file_get_contents($path);
+        }
+
+        $ratio   = min($maxDimension / $width, $maxDimension / $height);
+        $newW    = (int) round($width * $ratio);
+        $newH    = (int) round($height * $ratio);
+
+        $src = match ($type) {
+            IMAGETYPE_JPEG => \imagecreatefromjpeg($path),
+            IMAGETYPE_PNG  => \imagecreatefrompng($path),
+            IMAGETYPE_WEBP => \imagecreatefromwebp($path),
+            default        => null,
+        };
+
+        if ($src === null) {
+            return file_get_contents($path);
+        }
+
+        $dst = \imagecreatetruecolor($newW, $newH);
+        \imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $width, $height);
+        \imagedestroy($src);
+
+        ob_start();
+        \imagejpeg($dst, null, 85);
+        \imagedestroy($dst);
+
+        return ob_get_clean();
     }
 }
