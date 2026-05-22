@@ -22,7 +22,10 @@ class AIRoutineController extends Controller
         $imageData = base64_encode($this->resizeImage($request->file('photo')->getRealPath(), 1600));
         $mediaType = 'image/jpeg';
 
-        $http = app()->isLocal() ? Http::withoutVerifying() : Http::new();
+        $http = Http::timeout(30);
+        if (app()->isLocal()) {
+            $http = $http->withoutVerifying();
+        }
 
         $response = $http->post(
             'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . config('services.gemini.api_key'),
@@ -148,6 +151,10 @@ class AIRoutineController extends Controller
 
     private function resizeImage(string $path, int $maxDimension): string
     {
+        if (! extension_loaded('gd')) {
+            return file_get_contents($path);
+        }
+
         [$width, $height, $type] = getimagesize($path);
 
         if ($width <= $maxDimension && $height <= $maxDimension) {
