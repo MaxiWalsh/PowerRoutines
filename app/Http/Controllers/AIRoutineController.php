@@ -27,40 +27,46 @@ class AIRoutineController extends Controller
             $http = $http->withoutVerifying();
         }
 
-        $response = $http->post(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . config('services.gemini.api_key'),
-            [
-                'contents' => [
+        $prompt = 'Esta imagen contiene una rutina de entrenamiento escrita (puede ser papel, pizarrón, captura de pantalla o similar). '
+            . 'Leé todo el texto de la imagen y transcribí la rutina al siguiente formato JSON. '
+            . 'Respondé ÚNICAMENTE con el JSON, sin explicaciones ni markdown. '
+            . 'Estructura exacta requerida: '
+            . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":"10","rest_seconds":60,"notes":""}]}]}]}. '
+            . 'Reglas: '
+            . '1. Transcribí los ejercicios exactamente como están escritos en la imagen. '
+            . '2. Si hay días o grupos (ej: "Día A", "Tren superior"), usalos como days/blocks. Si no hay división por días, usá un solo día. '
+            . '3. Para sets/reps/rest que no estén escritos, usá valores estándar (sets:3, reps:"10", rest_seconds:60). '
+            . '4. El campo reps puede ser string para rangos o texto (ej: "8-12", "al fallo"). '
+            . '5. Si la imagen no contiene una rutina de entrenamiento, devolvé {"error":"no_routine"}.';
+
+        $response = $http
+            ->withHeaders([
+                'x-api-key'         => config('services.anthropic.api_key'),
+                'anthropic-version' => '2023-06-01',
+            ])
+            ->post('https://api.anthropic.com/v1/messages', [
+                'model'      => 'claude-haiku-4-5-20251001',
+                'max_tokens' => 2048,
+                'messages'   => [
                     [
-                        'parts' => [
+                        'role'    => 'user',
+                        'content' => [
                             [
-                                'inline_data' => [
-                                    'mime_type' => $mediaType,
-                                    'data'      => $imageData,
+                                'type'   => 'image',
+                                'source' => [
+                                    'type'       => 'base64',
+                                    'media_type' => $mediaType,
+                                    'data'       => $imageData,
                                 ],
                             ],
                             [
-                                'text' => 'Esta imagen contiene una rutina de entrenamiento escrita (puede ser papel, pizarrón, captura de pantalla o similar). '
-                                    . 'Leé todo el texto de la imagen y transcribí la rutina al siguiente formato JSON. '
-                                    . 'Estructura exacta requerida: '
-                                    . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":"10","rest_seconds":60,"notes":""}]}]}]}. '
-                                    . 'Reglas: '
-                                    . '1. Transcribí los ejercicios exactamente como están escritos en la imagen. '
-                                    . '2. Si hay días o grupos (ej: "Día A", "Tren superior"), usalos como days/blocks. Si no hay división por días, usá un solo día. '
-                                    . '3. Para sets/reps/rest que no estén escritos, usá valores estándar (sets:3, reps:"10", rest_seconds:60). '
-                                    . '4. El campo reps puede ser string para rangos o texto (ej: "8-12", "al fallo"). '
-                                    . '5. Si la imagen no contiene una rutina de entrenamiento, devolvé {"error":"no_routine"}.',
+                                'type' => 'text',
+                                'text' => $prompt,
                             ],
                         ],
                     ],
                 ],
-                'generationConfig' => [
-                    'temperature'      => 0.1,
-                    'maxOutputTokens'  => 2048,
-                    'responseMimeType' => 'application/json',
-                ],
-            ]
-        );
+            ]);
 
         if (! $response->successful()) {
             Log::error('Gemini API error', [
@@ -71,7 +77,7 @@ class AIRoutineController extends Controller
         }
 
         $body    = $response->json();
-        $jsonStr = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+        $jsonStr = $body['content'][0]['text'] ?? '';
 
         // Strip any accidental markdown fences
         $jsonStr = preg_replace('/^```(?:json)?\s*/i', '', trim($jsonStr));
