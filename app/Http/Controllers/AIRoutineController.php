@@ -27,60 +27,58 @@ class AIRoutineController extends Controller
             $http = $http->withoutVerifying();
         }
 
-        $response = $http->post(
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' . config('services.gemini.api_key'),
-            [
-                'contents' => [
+        $prompt = 'Esta imagen contiene una rutina de entrenamiento escrita (puede ser papel, pizarrón, captura de pantalla o similar). '
+            . 'Leé todo el texto de la imagen y transcribí la rutina al siguiente formato JSON. '
+            . 'Respondé ÚNICAMENTE con el JSON, sin explicaciones ni texto adicional. '
+            . 'Estructura exacta requerida: '
+            . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":"10","rest_seconds":60,"notes":""}]}]}]}. '
+            . 'Reglas: '
+            . '1. Transcribí los ejercicios exactamente como están escritos en la imagen. '
+            . '2. Si hay días o grupos (ej: "Día A", "Tren superior"), usalos como days/blocks. Si no hay división por días, usá un solo día. '
+            . '3. Para sets/reps/rest que no estén escritos, usá valores estándar (sets:3, reps:"10", rest_seconds:60). '
+            . '4. El campo reps puede ser string para rangos o texto (ej: "8-12", "al fallo"). '
+            . '5. Si la imagen no contiene una rutina de entrenamiento, devolvé {"error":"no_routine"}.';
+
+        $response = $http
+            ->withToken(config('services.groq.api_key'))
+            ->post('https://api.groq.com/openai/v1/chat/completions', [
+                'model'           => 'meta-llama/llama-4-scout-17b-16e-instruct',
+                'temperature'     => 0.1,
+                'max_tokens'      => 2048,
+                'response_format' => ['type' => 'json_object'],
+                'messages'        => [
                     [
-                        'parts' => [
+                        'role'    => 'user',
+                        'content' => [
                             [
-                                'inline_data' => [
-                                    'mime_type' => $mediaType,
-                                    'data'      => $imageData,
-                                ],
+                                'type'      => 'image_url',
+                                'image_url' => ['url' => "data:{$mediaType};base64,{$imageData}"],
                             ],
                             [
-                                'text' => 'Esta imagen contiene una rutina de entrenamiento escrita (puede ser papel, pizarrón, captura de pantalla o similar). '
-                                    . 'Leé todo el texto de la imagen y transcribí la rutina al siguiente formato JSON. '
-                                    . 'Estructura exacta requerida: '
-                                    . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":"10","rest_seconds":60,"notes":""}]}]}]}. '
-                                    . 'Reglas: '
-                                    . '1. Transcribí los ejercicios exactamente como están escritos en la imagen. '
-                                    . '2. Si hay días o grupos (ej: "Día A", "Tren superior"), usalos como days/blocks. Si no hay división por días, usá un solo día. '
-                                    . '3. Para sets/reps/rest que no estén escritos, usá valores estándar (sets:3, reps:"10", rest_seconds:60). '
-                                    . '4. El campo reps puede ser string para rangos o texto (ej: "8-12", "al fallo"). '
-                                    . '5. Si la imagen no contiene una rutina de entrenamiento, devolvé {"error":"no_routine"}.',
+                                'type' => 'text',
+                                'text' => $prompt,
                             ],
                         ],
                     ],
                 ],
-                'generationConfig' => [
-                    'temperature'      => 0.1,
-                    'maxOutputTokens'  => 2048,
-                    'responseMimeType' => 'application/json',
-                ],
-            ]
-        );
+            ]);
 
         if (! $response->successful()) {
             $status    = $response->status();
             $errorBody = $response->json();
             $message   = $errorBody['error']['message'] ?? $response->body();
 
-            Log::error('Gemini API error', ['status' => $status, 'message' => $message]);
+            Log::error('Groq API error', ['status' => $status, 'message' => $message]);
 
             if ($status === 429) {
-                $retryDelay = $errorBody['error']['details'][0]['retryDelay'] ?? '60s';
-                $seconds    = (int) filter_var($retryDelay, FILTER_SANITIZE_NUMBER_INT) ?: 60;
-                Log::warning("Gemini rate limit — retry in {$seconds}s");
-                abort(429, "Límite de solicitudes alcanzado. Esperá {$seconds} segundos e intentá de nuevo.");
+                abort(429, 'Límite de solicitudes alcanzado. Esperá unos segundos e intentá de nuevo.');
             }
 
             abort(503, 'Hubo un problema al analizar la imagen. Intentá de nuevo en unos momentos.');
         }
 
         $body    = $response->json();
-        $jsonStr = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+        $jsonStr = $body['choices'][0]['message']['content'] ?? '';
 
         // Strip any accidental markdown fences
         $jsonStr = preg_replace('/^```(?:json)?\s*/i', '', trim($jsonStr));
