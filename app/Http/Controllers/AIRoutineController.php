@@ -31,13 +31,14 @@ class AIRoutineController extends Controller
             . 'Leé todo el texto de la imagen y transcribí la rutina al siguiente formato JSON. '
             . 'Respondé ÚNICAMENTE con el JSON, sin explicaciones ni texto adicional. '
             . 'Estructura exacta requerida: '
-            . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":"10","rest_seconds":60,"notes":""}]}]}]}. '
+            . '{"name":"Nombre de la rutina","description":"Descripción breve","days":[{"day_number":1,"name":"Nombre del día","blocks":[{"name":"Nombre del bloque","order":1,"exercises":[{"name":"Nombre del ejercicio","sets":3,"reps":10,"rest_seconds":60,"notes":""}]}]}]}. '
             . 'Reglas: '
             . '1. Transcribí los ejercicios exactamente como están escritos en la imagen. '
             . '2. Si hay días o grupos (ej: "Día A", "Tren superior"), usalos como days/blocks. Si no hay división por días, usá un solo día. '
-            . '3. Para sets/reps/rest que no estén escritos, usá valores estándar (sets:3, reps:"10", rest_seconds:60). '
-            . '4. El campo reps puede ser string para rangos o texto (ej: "8-12", "al fallo"). '
-            . '5. Si la imagen no contiene una rutina de entrenamiento, devolvé {"error":"no_routine"}.';
+            . '3. El campo sets es un entero (número de series). '
+            . '4. El campo reps es un entero (repeticiones por serie). Si la imagen dice "4x10", sets=4 y reps=10. Si dice "x12" o "12", reps=12. Si no hay un número claro, usá 10. Poné cualquier aclaración adicional en notes. '
+            . '5. El campo rest_seconds es un entero (segundos de descanso). Si no está escrito, usá 60. '
+            . '6. Si la imagen no contiene una rutina de entrenamiento, devolvé {"error":"no_routine"}.';
 
         $response = $http
             ->withToken(config('services.groq.api_key'))
@@ -135,14 +136,21 @@ class AIRoutineController extends Controller
                             ]
                         );
 
-                        $reps = is_numeric($exData['reps'] ?? null)
-                            ? (int) $exData['reps']
-                            : null;
+                        $repsRaw = $exData['reps'] ?? null;
+                        if (is_numeric($repsRaw)) {
+                            $reps = (int) $repsRaw;
+                        } elseif (is_string($repsRaw) && preg_match('/(?:x|×)(\d+)/i', $repsRaw, $m)) {
+                            $reps = (int) $m[1];
+                        } else {
+                            $reps = null;
+                        }
+
+                        $restRaw = $exData['rest_seconds'] ?? 60;
 
                         $section->exercises()->attach($exercise->id, [
-                            'sets'     => $exData['sets']         ?? 3,
+                            'sets'     => $exData['sets']  ?? 3,
                             'reps'     => $reps,
-                            'rest_sec' => $exData['rest_seconds'] ?? 60,
+                            'rest_sec' => ($restRaw > 0) ? (int) $restRaw : 60,
                             'order'    => $exIndex + 1,
                             'notes'    => $exData['notes']        ?? null,
                         ]);
