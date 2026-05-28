@@ -1,58 +1,264 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# PowerRoutines
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+App móvil-first de gestión de entrenamiento para entrenadores y alumnos.
+Los entrenadores crean rutinas y las asignan; los alumnos las siguen, registran sesiones y ven su progreso.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Capa | Tecnología |
+|------|-----------|
+| Backend | Laravel 11 · PHP 8.3 · Sanctum · Spatie Permissions |
+| Frontend | React 18 · React Router v6 · TanStack Query v5 · Tailwind CSS v3 · PWA |
+| Base de datos | PostgreSQL (Supabase) |
+| Imágenes | Cloudinary |
+| Pagos | MercadoPago |
+| IA | Groq (Llama 4 Scout Vision) — genera rutinas desde foto |
+| Deploy | Render (backend) · Vercel (frontend) |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Repos
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+| Repo | Carpeta local | URL |
+|------|--------------|-----|
+| Backend | `routine-app/` | https://github.com/MaxiWalsh/PowerRoutines |
+| Frontend | `routine-app-front/` | https://github.com/MaxiWalsh/PowerRoutines-front |
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## URLs de producción
 
-## Agentic Development
+| Servicio | URL |
+|----------|-----|
+| Frontend | https://power-routines-front.vercel.app |
+| Backend API | https://powerroutines-api.onrender.com |
+| Base de datos | Supabase proyecto `powerroutines` (ID: `zytymgrzlkqehusxnktd`) |
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+---
 
-```bash
-composer require laravel/boost --dev
+## Arquitectura
 
-php artisan boost:install
+```
+Browser / PWA
+     │
+     ▼
+React SPA (Vercel)
+     │  Bearer token (Sanctum)
+     ▼
+Laravel API (Render)
+     ├── PostgreSQL (Supabase)
+     ├── Cloudinary (avatares, logos, fotos ejercicios)
+     ├── MercadoPago (pagos marketplace)
+     └── Groq API (IA: foto → rutina JSON)
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### Autenticación
 
-## Contributing
+Laravel Sanctum con tokens Bearer. El token se guarda en `localStorage` en el frontend y se envía en cada request como `Authorization: Bearer <token>`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Roles (Spatie): `trainer` y `student`.
 
-## Code of Conduct
+### Modelo de datos clave
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```
+User (trainer | student)
+ ├── Gym (trainer crea, students se unen por código)
+ ├── Profile (agrupa students con rutinas asignadas)
+ └── Routine
+      ├── Block (día: parent_id null)
+      │    └── Block (sección: parent_id = día)
+      │         └── block_exercise (pivot: sets, reps, rest_sec, order, notes)
+      │              └── Exercise (catálogo global + personal)
+      ├── RoutineAssignment (a student, gym o profile)
+      └── RoutinePurchase (marketplace)
 
-## Security Vulnerabilities
+ExerciseLog (registra una serie ejecutada en sesión)
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Features
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Auth y usuarios
+- Registro y login con roles `trainer` / `student`
+- Avatar upload (Cloudinary)
+- Campos de personalización: disciplina, objetivo, nivel, condiciones físicas
+- Wizard de onboarding post-registro (3 pasos)
+
+### Gimnasio
+- El trainer crea el gym y obtiene un código de invitación
+- Los students se unen con el código
+- El trainer puede ver y gestionar sus alumnos
+
+### Rutinas
+- CRUD completo de rutinas
+- Estructura: Rutina → Días → Bloques → Ejercicios (con sets/reps/rest/notas)
+- Asignación a student individual, gym entero o profile
+- **Generación desde foto**: `POST /api/routines/from-photo` envía una imagen al modelo Llama 4 Scout (Groq) que hace OCR y devuelve la rutina estructurada en JSON
+
+### Sesiones de entrenamiento
+- El student arranca una sesión para una rutina asignada
+- Registra cada serie ejecutada (peso, reps reales, notas)
+- Historial agrupado por rutina y sesión
+
+### Progreso (premium)
+- Stats de entrenamiento, racha y gráfico SVG de progreso por ejercicio
+- Bloqueado por `PremiumGate` para plan free
+
+### Marketplace
+- Trainers publican rutinas (gratis o de pago)
+- Students compran: gratis = compra directa, de pago = redirect a MercadoPago sandbox → webhook
+- Rutinas recomendadas filtradas por disciplina + nivel + contraindicaciones
+
+### Perfiles de entrenamiento
+- El trainer crea profiles (ej: "Avanzados lunes/miércoles")
+- Asigna students y rutinas al profile
+
+---
+
+## Rutas API principales
+
+### Públicas
+```
+GET  /api/ping
+POST /api/users/register
+POST /api/users/login
+POST /api/webhooks/mercadopago
+```
+
+### Protegidas (Bearer token requerido)
+
+**Usuarios**
+```
+GET    /api/users/me
+PUT    /api/users/me
+POST   /api/users/me/avatar
+POST   /api/users/me/upgrade / downgrade
+POST   /api/users/logout
+```
+
+**Gimnasio**
+```
+POST   /api/gyms
+GET    /api/gyms/{gym}
+PUT    /api/gyms/{gym}
+POST   /api/gyms/{gym}/logo
+POST   /api/gyms/join
+GET    /api/gyms/{gym}/students
+DELETE /api/gyms/{gym}/leave
+DELETE /api/gyms/{gym}/students/{studentId}
+```
+
+**Rutinas**
+```
+GET|POST                /api/routines
+GET|PUT|DELETE          /api/routines/{routine}
+POST                    /api/routines/from-photo
+POST                    /api/routines/{routine}/assign/student/{studentId}
+POST                    /api/routines/{routine}/assign/gym/{gymId}
+POST                    /api/routines/{routine}/assign/profile/{profileId}
+DELETE                  /api/routines/{routine}/assignments/{assignment}
+```
+
+**Bloques y ejercicios**
+```
+POST|PUT|DELETE  /api/routines/{routine}/blocks/{block?}
+POST|PUT|DELETE  /api/routines/{routine}/blocks/{block}/exercises/{exerciseId?}
+```
+
+**Logs**
+```
+POST  /api/logs
+GET   /api/me/logs
+GET   /api/me/logs/exercise/{exerciseId}
+GET   /api/me/logs/exercise/{exerciseId}/stats
+```
+
+**Marketplace**
+```
+GET   /api/marketplace
+GET   /api/marketplace/recommended
+POST  /api/marketplace/{routine}/checkout
+GET   /api/marketplace/{routine}/purchase-status
+POST  /api/routines/{routine}/publish
+GET   /api/trainer/marketplace/stats
+```
+
+---
+
+## Variables de entorno
+
+### Backend (`routine-app/.env`)
+
+| Variable | Descripción | Dónde obtenerla |
+|----------|-------------|-----------------|
+| `APP_KEY` | Clave de cifrado de Laravel | `php artisan key:generate` |
+| `APP_ENV` | `local` o `production` | — |
+| `DB_HOST` | Host de Supabase | supabase.com → proyecto → Settings → Database |
+| `DB_PASSWORD` | Password de Supabase | ídem |
+| `CLOUDINARY_CLOUD_NAME` | Nombre del cloud | cloudinary.com → Settings → API Keys |
+| `CLOUDINARY_API_KEY` | API key de Cloudinary | ídem |
+| `CLOUDINARY_API_SECRET` | Secret de Cloudinary | ídem |
+| `MP_ACCESS_TOKEN` | Token de MercadoPago | mercadopago.com.ar/developers → tu app |
+| `MP_PUBLIC_KEY` | Public key de MercadoPago | ídem |
+| `GROQ_API_KEY` | API key de Groq (IA) | console.groq.com/keys |
+| `FRONTEND_URL` | URL del frontend (CORS) | URL de Vercel o `http://localhost:5173` local |
+
+### Frontend (`routine-app-front/.env`)
+
+| Variable | Descripción |
+|----------|-------------|
+| `VITE_API_URL` | URL base del backend (ej: `https://powerroutines-api.onrender.com`). Si no se define, usa proxy local a `http://localhost:8000` |
+
+---
+
+## Consideraciones de despliegue
+
+- **Anti-sleep**: UptimeRobot pingea `GET /api/ping` cada 5 min para que Render no duerma el servidor
+- **Render**: el backend se despliega desde `routine-app/`. Config en `render.yaml`
+- **Vercel**: el frontend se despliega desde `routine-app-front/`. Config en `vercel.json`
+- **GD**: la extensión GD de PHP es necesaria para redimensionar imágenes antes de enviarlas a la IA. En Render no está disponible — hay fallback a `file_get_contents()`
+
+---
+
+## Estructura del backend
+
+```
+app/
+├── Http/
+│   ├── Controllers/     AIRoutineController, AuthController, BlockController,
+│   │                    ExerciseController, ExerciseLogController, GymController,
+│   │                    MarketplaceController, PaymentController, ProfileController,
+│   │                    RoutineController
+│   ├── Requests/        Validaciones por entidad (Auth, Block, Exercise, Gym, Log, Profile, Routine, User)
+│   └── Resources/       BlockResource, ExerciseResource, GymResource, ProfileResource,
+│                        RoutineAssignmentResource, RoutineResource, UserResource
+├── Models/              User, Gym, Profile, Routine, RoutineAssignment, RoutinePurchase,
+│                        Exercise, ExerciseLog, Block
+├── Policies/            GymPolicy, RoutinePolicy
+└── Services/            AuthService, ExerciseLogService, GymService,
+                         ImageUploadService, RoutineService
+```
+
+## Estructura del frontend
+
+```
+src/
+├── App.jsx
+├── lib/
+│   ├── api.js           cliente axios con baseURL dinámica
+│   ├── auth.js          helpers de autenticación
+│   └── cn.js            utilidad de clases Tailwind
+├── components/
+│   ├── Layout.jsx
+│   ├── AvatarUpload.jsx
+│   └── PremiumGate.jsx
+└── pages/
+    ├── LandingPage, LoginPage, RegisterPage, Onboarding, JoinPage
+    ├── student/         Routines, RoutineDetail, RoutineEdit, RoutineSession,
+    │                    Logs, Progress, Marketplace, Profile
+    └── trainer/         Routines, RoutineEdit, Students, StudentDetail,
+                         Marketplace, Profile
+```
