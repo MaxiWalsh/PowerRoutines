@@ -36,41 +36,39 @@ class Routine extends Model
         $gymIds     = $user->gyms()->pluck('gyms.id');
         $profileIds = $user->profiles()->pluck('profiles.id');
 
-        return $query->where(function ($q) use ($user, $gymIds, $profileIds) {
-            // Propias — el dueño ve todas (activas e inactivas)
-            $q->where('owner_id', $user->id);
+        return $query
+            ->leftJoin('routine_assignments as ra', 'ra.routine_id', '=', 'routines.id')
+            ->distinct()
+            ->select('routines.*')
+            ->where(function ($q) use ($user, $gymIds, $profileIds) {
+                // Propias — el dueño ve todas (activas e inactivas)
+                $q->where('routines.owner_id', $user->id);
 
-            // Asignadas directamente al user (solo activas)
-            $q->orWhere(function ($sub) use ($user) {
-                $sub->where('is_active', true)
-                    ->whereHas('assignments', fn($a) =>
-                        $a->where('assignable_type', User::class)
-                          ->where('assignable_id', $user->id)
-                    );
+                // Asignadas directamente al user (solo activas)
+                $q->orWhere(function ($sub) use ($user) {
+                    $sub->where('routines.is_active', true)
+                        ->where('ra.assignable_type', User::class)
+                        ->where('ra.assignable_id', $user->id);
+                });
+
+                // Asignadas al gym del user (solo activas)
+                if ($gymIds->isNotEmpty()) {
+                    $q->orWhere(function ($sub) use ($gymIds) {
+                        $sub->where('routines.is_active', true)
+                            ->where('ra.assignable_type', Gym::class)
+                            ->whereIn('ra.assignable_id', $gymIds);
+                    });
+                }
+
+                // Asignadas a un perfil del user (solo activas)
+                if ($profileIds->isNotEmpty()) {
+                    $q->orWhere(function ($sub) use ($profileIds) {
+                        $sub->where('routines.is_active', true)
+                            ->where('ra.assignable_type', Profile::class)
+                            ->whereIn('ra.assignable_id', $profileIds);
+                    });
+                }
             });
-
-            // Asignadas al gym del user (solo activas)
-            if ($gymIds->isNotEmpty()) {
-                $q->orWhere(function ($sub) use ($gymIds) {
-                    $sub->where('is_active', true)
-                        ->whereHas('assignments', fn($a) =>
-                            $a->where('assignable_type', Gym::class)
-                              ->whereIn('assignable_id', $gymIds)
-                        );
-                });
-            }
-
-            // Asignadas a un perfil del user (solo activas)
-            if ($profileIds->isNotEmpty()) {
-                $q->orWhere(function ($sub) use ($profileIds) {
-                    $sub->where('is_active', true)
-                        ->whereHas('assignments', fn($a) =>
-                            $a->where('assignable_type', Profile::class)
-                              ->whereIn('assignable_id', $profileIds)
-                        );
-                });
-            }
-        });
     }
 
     // ── Relaciones ───────────────────────────────────────────────────────────

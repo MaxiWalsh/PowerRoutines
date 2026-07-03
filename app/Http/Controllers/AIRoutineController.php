@@ -15,6 +15,8 @@ class AIRoutineController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->isPremium(), 403, 'Esta función requiere plan Premium.');
+
         $request->validate([
             'photo' => 'required|file|image|max:8192',
         ]);
