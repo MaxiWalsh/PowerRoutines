@@ -10,10 +10,14 @@ use App\Http\Controllers\MarketplaceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoutineController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 // ── Health check ────────────────────────────────────────────────────────────
-Route::get('/ping', fn() => ['pong' => true]);
+Route::get('/ping', function () {
+    DB::select('SELECT 1');
+    return ['pong' => true];
+});
 
 // ── Webhooks (sin auth — los llama Mercado Pago) ─────────────────────────────
 Route::post('/webhooks/mercadopago', [PaymentController::class, 'webhook']);
